@@ -1194,7 +1194,7 @@
       voiceOutputEnabled = !voiceOutputEnabled;
       localStorage.setItem('us_legal_voice_output', voiceOutputEnabled);
       updateVoiceToggle();
-      if (!voiceOutputEnabled && currentSpeech) { window.speechSynthesis.cancel(); }
+      if (!voiceOutputEnabled) { stopSpeech(); }
     }
     function updateVoiceToggle() {
       document.getElementById('voiceToggle').classList.toggle('on', voiceOutputEnabled);
@@ -1225,7 +1225,7 @@
     function toggleRecording() { isRecording ? stopRecording() : startRecording(); }
     function startRecording() {
       if (!recognition) { showNotification('Speech recognition not supported', 'error'); return; }
-      if (currentSpeech) { window.speechSynthesis.cancel(); }
+      stopSpeech();
       isRecording = true;
       document.getElementById('micBtn').classList.add('recording');
       recognition.start();
@@ -1236,12 +1236,18 @@
       try { if (recognition) recognition.stop(); } catch(e) {}
     }
 
-    // ========== SPEECH SYNTHESIS ==========
+    // ========== SPEECH SYNTHESIS (Google Translate TTS) ==========
+    let currentAudioQueue = [];
+    let isPlayingAudio = false;
+
     function speakText(text, label) {
       if (!voiceOutputEnabled) return;
-      window.speechSynthesis.cancel();
+
+      // Stop any ongoing playback
+      stopSpeech();
       showAudioBar(label || t('reading'));
 
+      // Clean text
       let cleanText = text
         .replace(/^#{1,3}\s+[^\n]+/gm, '')
         .replace(/\*\*([^*]+)\*\*/g, '$1')
@@ -1252,69 +1258,60 @@
         .replace(/\n{3,}/g, '\n\n')
         .trim();
 
-      const MAX_CHUNK = 2000;
-      const voiceLang = currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
-      const langPrefix = currentLanguage === 'fr' ? 'fr' : 'en';
+      const MAX_CHUNK = 200; // Google TTS limit
+      const lang = currentLanguage === 'fr' ? 'fr' : 'en';
 
-      function getVoiceForLang() {
-        const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
-        const voice = voices.find(v => v.lang === voiceLang)
-          || voices.find(v => v.lang.startsWith(langPrefix + '-'))
-          || voices.find(v => v.lang.startsWith(langPrefix));
-        console.log(`🎤 TTS using: ${voice ? voice.name + ' (' + voice.lang + ')' : 'DEFAULT (lang=' + voiceLang + ')'} for language: ${currentLanguage}`);
-        return voice;
-      }
-
-      function makeUtterance(text) {
-        const utt = new SpeechSynthesisUtterance(text);
-        utt.lang = voiceLang;
-        utt.rate = 0.95;
-        utt.pitch = 1;
-        const voice = getVoiceForLang();
-        if (voice) utt.voice = voice;
-        return utt;
-      }
-
-      function doSpeak() {
-        if (cleanText.length <= MAX_CHUNK) {
-          const utterance = makeUtterance(cleanText);
-          utterance.onend = () => { hideAudioBar(); };
-          currentSpeech = utterance;
-          window.speechSynthesis.speak(utterance);
-        } else {
-          const chunks = [];
-          let remaining = cleanText;
-          while (remaining.length > 0) {
-            let cut = MAX_CHUNK;
-            if (remaining.length > MAX_CHUNK) {
-              const lastPeriod = remaining.lastIndexOf('. ', MAX_CHUNK);
-              const lastNewline = remaining.lastIndexOf('\n', MAX_CHUNK);
-              cut = Math.max(lastPeriod, lastNewline);
-              if (cut < 100) cut = MAX_CHUNK;
-            }
-            chunks.push(remaining.slice(0, cut + 1).trim());
-            remaining = remaining.slice(cut + 1).trim();
-          }
-          chunks.forEach((chunk, i) => {
-            const utt = makeUtterance(chunk);
-            if (i === 0) currentSpeech = utt;
-            if (i === chunks.length - 1) utt.onend = () => { hideAudioBar(); };
-            window.speechSynthesis.speak(utt);
-          });
+      // Split text into chunks
+      const chunks = [];
+      let remaining = cleanText;
+      while (remaining.length > 0) {
+        if (remaining.length <= MAX_CHUNK) {
+          chunks.push(remaining);
+          break;
         }
+        // Find sentence boundary
+        let cut = remaining.lastIndexOf('. ', MAX_CHUNK);
+        if (cut < 50) cut = remaining.lastIndexOf(' ', MAX_CHUNK);
+        if (cut < 10) cut = MAX_CHUNK;
+        chunks.push(remaining.slice(0, cut + 1).trim());
+        remaining = remaining.slice(cut + 1).trim();
       }
 
-      // Wait for voices if not loaded yet
-      if (cachedVoices.length === 0) {
-        const waitVoices = () => {
-          cachedVoices = window.speechSynthesis.getVoices();
-          if (cachedVoices.length > 0) { doSpeak(); }
-          else { setTimeout(waitVoices, 100); }
-        };
-        waitVoices();
-      } else {
-        doSpeak();
+      // Create audio queue
+      currentAudioQueue = chunks.map(chunk => {
+        const audio = new Audio();
+        const encodedText = encodeURIComponent(chunk);
+        audio.src = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodedText}`;
+        return audio;
+      });
+
+      // Play queue
+      playNextInQueue();
+    }
+
+    function playNextInQueue() {
+      if (currentAudioQueue.length === 0) {
+        hideAudioBar();
+        isPlayingAudio = false;
+        return;
       }
+
+      isPlayingAudio = true;
+      const audio = currentAudioQueue.shift();
+
+      audio.onended = () => {
+        playNextInQueue();
+      };
+
+      audio.onerror = () => {
+        console.error('TTS audio error, skipping chunk');
+        playNextInQueue();
+      };
+
+      audio.play().catch(err => {
+        console.error('TTS play error:', err);
+        playNextInQueue();
+      });
     }
 
     // ========== CHAT LOGIC ==========
@@ -1838,13 +1835,28 @@
       if (btn) btn.title = isSpeechPaused ? 'Resume' : 'Pause';
     }
     function pauseResumeSpeech() {
-      if (!window.speechSynthesis.speaking) return;
-      if (isSpeechPaused) { window.speechSynthesis.resume(); isSpeechPaused = false; }
-      else { window.speechSynthesis.pause(); isSpeechPaused = true; }
+      if (!isPlayingAudio) return;
+      const currentAudio = currentAudioQueue[0];
+      if (!currentAudio) return;
+
+      if (isSpeechPaused) {
+        currentAudio.play();
+        isSpeechPaused = false;
+      } else {
+        currentAudio.pause();
+        isSpeechPaused = true;
+      }
       updatePauseBtn();
     }
     function stopSpeech() {
-      window.speechSynthesis.cancel();
+      // Stop all queued audio
+      currentAudioQueue.forEach(audio => {
+        audio.pause();
+        audio.src = '';
+      });
+      currentAudioQueue = [];
+      isPlayingAudio = false;
+      isSpeechPaused = false;
       hideAudioBar();
     }
     function speakStoredText(id) {
@@ -1861,24 +1873,8 @@
       speakText(body.innerText, label);
     }
 
-    // Load voices on ready - pre-cache for correct language selection
-    let cachedVoices = [];
-    let voicesLogged = false;
-    function loadVoices() {
-      cachedVoices = window.speechSynthesis.getVoices();
-      if (!voicesLogged && cachedVoices.length > 0) {
-        console.log('🔊 Available TTS voices:', cachedVoices.map(v => `${v.name} (${v.lang})`).join(', '));
-        const enVoices = cachedVoices.filter(v => v.lang.startsWith('en'));
-        const frVoices = cachedVoices.filter(v => v.lang.startsWith('fr'));
-        console.log('🇺🇸 English voices:', enVoices.length > 0 ? enVoices.map(v => v.name).join(', ') : 'NONE - will use system default');
-        console.log('🇫🇷 French voices:', frVoices.length > 0 ? frVoices.map(v => v.name).join(', ') : 'NONE');
-        voicesLogged = true;
-      }
-    }
-    if (window.speechSynthesis) {
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
+    // Google Translate TTS is used - no need for Web Speech API voice loading
+    console.log('🎤 TTS Provider: Google Translate (supports EN/FR)');
   </script>
 </body>
 </html>
