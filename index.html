@@ -1236,10 +1236,15 @@
       try { if (recognition) recognition.stop(); } catch(e) {}
     }
 
-    // ========== SPEECH SYNTHESIS (Web Speech API) ==========
-    function speakText(text, label) {
+    // ========== SPEECH SYNTHESIS (OpenAI TTS via n8n) ==========
+    const TTS_WEBHOOK = 'https://mmdrame2017.app.n8n.cloud/webhook/tts';
+    let audioQueue = [];
+    let isPlaying = false;
+    let currentAudio = null;
+
+    async function speakText(text, label) {
       if (!voiceOutputEnabled) return;
-      window.speechSynthesis.cancel();
+      stopSpeech();
       showAudioBar(label || t('reading'));
 
       let cleanText = text
@@ -1252,8 +1257,8 @@
         .replace(/\n{3,}/g, '\n\n')
         .trim();
 
-      const MAX_CHUNK = 200;
-      const voiceLang = currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
+      const MAX_CHUNK = 500;
+      const lang = currentLanguage === 'fr' ? 'fr' : 'en';
 
       // Chunk text
       const chunks = [];
@@ -1264,28 +1269,70 @@
           break;
         }
         let cut = remaining.lastIndexOf('. ', MAX_CHUNK);
-        if (cut < 50) cut = remaining.lastIndexOf(' ', MAX_CHUNK);
-        if (cut < 10) cut = MAX_CHUNK;
+        if (cut < 100) cut = remaining.lastIndexOf(' ', MAX_CHUNK);
+        if (cut < 50) cut = MAX_CHUNK;
         chunks.push(remaining.slice(0, cut + 1).trim());
         remaining = remaining.slice(cut + 1).trim();
       }
 
-      // Get best voice
-      const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find(v => v.lang === voiceLang)
-        || voices.find(v => v.lang.startsWith(currentLanguage))
-        || null;
+      console.log('🎤 TTS: OpenAI (' + lang.toUpperCase() + '), ' + chunks.length + ' chunks');
 
-      console.log('🎤 TTS:', voice ? `${voice.name} (${voice.lang})` : `Default (${voiceLang})`);
+      // Fetch audio for all chunks
+      audioQueue = [];
+      for (const chunk of chunks) {
+        try {
+          const response = await fetch(TTS_WEBHOOK, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: chunk, language: lang })
+          });
 
-      // Speak
-      chunks.forEach((chunk, i) => {
-        const utt = new SpeechSynthesisUtterance(chunk);
-        utt.lang = voiceLang;
-        utt.rate = 0.95;
-        if (voice) utt.voice = voice;
-        if (i === chunks.length - 1) utt.onend = () => { hideAudioBar(); };
-        window.speechSynthesis.speak(utt);
+          if (!response.ok) {
+            console.error('TTS error:', response.status);
+            continue;
+          }
+
+          const data = await response.json();
+          if (data.audio) {
+            const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+            audioQueue.push(audio);
+          }
+        } catch (err) {
+          console.error('TTS fetch error:', err);
+        }
+      }
+
+      if (audioQueue.length > 0) {
+        playNextAudio();
+      } else {
+        hideAudioBar();
+        showNotification('TTS error - check console', 'error');
+      }
+    }
+
+    function playNextAudio() {
+      if (audioQueue.length === 0) {
+        isPlaying = false;
+        currentAudio = null;
+        hideAudioBar();
+        return;
+      }
+
+      isPlaying = true;
+      currentAudio = audioQueue.shift();
+
+      currentAudio.onended = () => {
+        playNextAudio();
+      };
+
+      currentAudio.onerror = (err) => {
+        console.error('Audio playback error:', err);
+        playNextAudio();
+      };
+
+      currentAudio.play().catch(err => {
+        console.error('Audio play error:', err);
+        playNextAudio();
       });
     }
 
@@ -1810,18 +1857,25 @@
       if (btn) btn.title = isSpeechPaused ? 'Resume' : 'Pause';
     }
     function pauseResumeSpeech() {
-      if (!window.speechSynthesis.speaking) return;
+      if (!currentAudio) return;
       if (isSpeechPaused) {
-        window.speechSynthesis.resume();
+        currentAudio.play();
         isSpeechPaused = false;
       } else {
-        window.speechSynthesis.pause();
+        currentAudio.pause();
         isSpeechPaused = true;
       }
       updatePauseBtn();
     }
     function stopSpeech() {
-      window.speechSynthesis.cancel();
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.src = '';
+      }
+      audioQueue.forEach(a => { a.pause(); a.src = ''; });
+      audioQueue = [];
+      isPlaying = false;
+      currentAudio = null;
       isSpeechPaused = false;
       hideAudioBar();
     }
@@ -1839,15 +1893,8 @@
       speakText(body.innerText, label);
     }
 
-    // Web Speech API - log available voices
-    window.speechSynthesis.onvoiceschanged = () => {
-      const voices = window.speechSynthesis.getVoices();
-      const enVoices = voices.filter(v => v.lang.startsWith('en'));
-      const frVoices = voices.filter(v => v.lang.startsWith('fr'));
-      console.log('🎤 TTS Provider: Web Speech API');
-      console.log('🇺🇸 EN voices:', enVoices.length > 0 ? enVoices.map(v => v.name).join(', ') : 'NONE');
-      console.log('🇫🇷 FR voices:', frVoices.length > 0 ? frVoices.map(v => v.name).join(', ') : 'NONE');
-    };
+    // OpenAI TTS ready
+    console.log('🎤 TTS Provider: OpenAI (via n8n webhook)');
   </script>
 </body>
 </html>
