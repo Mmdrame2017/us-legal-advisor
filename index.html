@@ -1262,20 +1262,24 @@
         .replace(/\n{3,}/g, '\n\n')
         .trim();
 
+      const FIRST_CHUNK = 150; // Small first chunk for fast audio start (~3s vs 6s)
       const MAX_CHUNK = 500;
       const lang = currentLanguage === 'fr' ? 'fr' : 'en';
 
-      // Chunk text
+      // Chunk text: small first chunk for fast start, then normal size
       const chunks = [];
       let remaining = cleanText;
+      let isFirst = true;
       while (remaining.length > 0) {
-        if (remaining.length <= MAX_CHUNK) {
+        const limit = isFirst ? FIRST_CHUNK : MAX_CHUNK;
+        isFirst = false;
+        if (remaining.length <= limit) {
           chunks.push(remaining);
           break;
         }
-        let cut = remaining.lastIndexOf('. ', MAX_CHUNK);
-        if (cut < 100) cut = remaining.lastIndexOf(' ', MAX_CHUNK);
-        if (cut < 50) cut = MAX_CHUNK;
+        let cut = remaining.lastIndexOf('. ', limit);
+        if (cut < 50) cut = remaining.lastIndexOf(' ', limit);
+        if (cut < 20) cut = limit;
         chunks.push(remaining.slice(0, cut + 1).trim());
         remaining = remaining.slice(cut + 1).trim();
       }
