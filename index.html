@@ -1254,39 +1254,64 @@
 
       const MAX_CHUNK = 2000;
       const voiceLang = currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => v.lang === voiceLang && !v.name.includes('Google'))
-        || voices.find(v => v.lang.startsWith(currentLanguage));
+      const langPrefix = currentLanguage === 'fr' ? 'fr' : 'en';
 
-      if (cleanText.length <= MAX_CHUNK) {
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = voiceLang; utterance.rate = 0.95; utterance.pitch = 1;
-        if (preferredVoice) utterance.voice = preferredVoice;
-        utterance.onend = () => { hideAudioBar(); };
-        currentSpeech = utterance;
-        window.speechSynthesis.speak(utterance);
-      } else {
-        const chunks = [];
-        let remaining = cleanText;
-        while (remaining.length > 0) {
-          let cut = MAX_CHUNK;
-          if (remaining.length > MAX_CHUNK) {
-            const lastPeriod = remaining.lastIndexOf('. ', MAX_CHUNK);
-            const lastNewline = remaining.lastIndexOf('\n', MAX_CHUNK);
-            cut = Math.max(lastPeriod, lastNewline);
-            if (cut < 100) cut = MAX_CHUNK;
+      function getVoiceForLang() {
+        const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
+        return voices.find(v => v.lang === voiceLang)
+          || voices.find(v => v.lang.startsWith(langPrefix + '-'))
+          || voices.find(v => v.lang.startsWith(langPrefix));
+      }
+
+      function makeUtterance(text) {
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.lang = voiceLang;
+        utt.rate = 0.95;
+        utt.pitch = 1;
+        const voice = getVoiceForLang();
+        if (voice) utt.voice = voice;
+        return utt;
+      }
+
+      function doSpeak() {
+        if (cleanText.length <= MAX_CHUNK) {
+          const utterance = makeUtterance(cleanText);
+          utterance.onend = () => { hideAudioBar(); };
+          currentSpeech = utterance;
+          window.speechSynthesis.speak(utterance);
+        } else {
+          const chunks = [];
+          let remaining = cleanText;
+          while (remaining.length > 0) {
+            let cut = MAX_CHUNK;
+            if (remaining.length > MAX_CHUNK) {
+              const lastPeriod = remaining.lastIndexOf('. ', MAX_CHUNK);
+              const lastNewline = remaining.lastIndexOf('\n', MAX_CHUNK);
+              cut = Math.max(lastPeriod, lastNewline);
+              if (cut < 100) cut = MAX_CHUNK;
+            }
+            chunks.push(remaining.slice(0, cut + 1).trim());
+            remaining = remaining.slice(cut + 1).trim();
           }
-          chunks.push(remaining.slice(0, cut + 1).trim());
-          remaining = remaining.slice(cut + 1).trim();
+          chunks.forEach((chunk, i) => {
+            const utt = makeUtterance(chunk);
+            if (i === 0) currentSpeech = utt;
+            if (i === chunks.length - 1) utt.onend = () => { hideAudioBar(); };
+            window.speechSynthesis.speak(utt);
+          });
         }
-        chunks.forEach((chunk, i) => {
-          const utt = new SpeechSynthesisUtterance(chunk);
-          utt.lang = voiceLang; utt.rate = 0.95; utt.pitch = 1;
-          if (preferredVoice) utt.voice = preferredVoice;
-          if (i === 0) currentSpeech = utt;
-          if (i === chunks.length - 1) utt.onend = () => { hideAudioBar(); };
-          window.speechSynthesis.speak(utt);
-        });
+      }
+
+      // Wait for voices if not loaded yet
+      if (cachedVoices.length === 0) {
+        const waitVoices = () => {
+          cachedVoices = window.speechSynthesis.getVoices();
+          if (cachedVoices.length > 0) { doSpeak(); }
+          else { setTimeout(waitVoices, 100); }
+        };
+        waitVoices();
+      } else {
+        doSpeak();
       }
     }
 
@@ -1834,10 +1859,14 @@
       speakText(body.innerText, label);
     }
 
-    // Load voices on ready
+    // Load voices on ready - pre-cache for correct language selection
+    let cachedVoices = [];
+    function loadVoices() {
+      cachedVoices = window.speechSynthesis.getVoices();
+    }
     if (window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = () => {};
-      speechSynthesis.getVoices();
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
     }
   </script>
 </body>
