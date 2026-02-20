@@ -1244,9 +1244,12 @@
     let currentAudio = null;
     let ttsAborted = false;
     let ttsAllFetched = false;
+    let ttsGeneration = 0; // Prevents race condition when speakText called multiple times
 
     async function speakText(text, label) {
       if (!voiceOutputEnabled) return;
+      ttsGeneration++;
+      const myGen = ttsGeneration;
       stopSpeech();
       showAudioBar(label || t('reading'));
       ttsAborted = false;
@@ -1294,26 +1297,28 @@
           body: JSON.stringify({ text: chunk, language: lang })
         })
         .then(r => r.ok ? r.json() : null)
-        .then(data => (data && data.audio) ? data.audio : null)
-        .catch(err => { if (!ttsAborted) console.error('TTS chunk', i, 'error:', err); return null; })
+        .then(data => (data && typeof data.audio === 'string' && data.audio.length > 0) ? data.audio : null)
+        .catch(err => { console.error('TTS chunk', i, 'error:', err); return null; })
       );
 
       // Play each chunk in ORDER as it resolves
       audioQueue = [];
       for (let i = 0; i < fetchPromises.length; i++) {
-        if (ttsAborted) break;
+        if (myGen !== ttsGeneration) break; // A newer speakText call has started - abort
         const audio64 = await fetchPromises[i];
+        if (myGen !== ttsGeneration) break;
         if (audio64) {
           const audio = new Audio('data:audio/mp3;base64,' + audio64);
+          audio.preload = 'auto';
           audioQueue.push(audio);
           if (!isPlaying) playNextAudio();
         }
       }
 
+      if (myGen !== ttsGeneration) return; // Superseded
       ttsAllFetched = true;
       if (!isPlaying && audioQueue.length === 0) {
         hideAudioBar();
-        showNotification('TTS error - check console', 'error');
       }
     }
 
