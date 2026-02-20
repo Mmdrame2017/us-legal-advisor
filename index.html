@@ -1258,9 +1258,11 @@
 
       function getVoiceForLang() {
         const voices = cachedVoices.length > 0 ? cachedVoices : window.speechSynthesis.getVoices();
-        return voices.find(v => v.lang === voiceLang)
+        const voice = voices.find(v => v.lang === voiceLang)
           || voices.find(v => v.lang.startsWith(langPrefix + '-'))
           || voices.find(v => v.lang.startsWith(langPrefix));
+        console.log(`🎤 TTS using: ${voice ? voice.name + ' (' + voice.lang + ')' : 'DEFAULT (lang=' + voiceLang + ')'} for language: ${currentLanguage}`);
+        return voice;
       }
 
       function makeUtterance(text) {
@@ -1861,8 +1863,17 @@
 
     // Load voices on ready - pre-cache for correct language selection
     let cachedVoices = [];
+    let voicesLogged = false;
     function loadVoices() {
       cachedVoices = window.speechSynthesis.getVoices();
+      if (!voicesLogged && cachedVoices.length > 0) {
+        console.log('🔊 Available TTS voices:', cachedVoices.map(v => `${v.name} (${v.lang})`).join(', '));
+        const enVoices = cachedVoices.filter(v => v.lang.startsWith('en'));
+        const frVoices = cachedVoices.filter(v => v.lang.startsWith('fr'));
+        console.log('🇺🇸 English voices:', enVoices.length > 0 ? enVoices.map(v => v.name).join(', ') : 'NONE - will use system default');
+        console.log('🇫🇷 French voices:', frVoices.length > 0 ? frVoices.map(v => v.name).join(', ') : 'NONE');
+        voicesLogged = true;
+      }
     }
     if (window.speechSynthesis) {
       loadVoices();
