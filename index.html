@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Justice AI – US Legal Advisor</title>
+  <style>
+    :root {
+      --bg-dark: #0d1117;
+      --bg-card: #161b22;
+      --bg-sidebar: #0a0e14;
+      --bg-input: #1c2128;
+      --border: #30363d;
+      --us-blue: #002868;
+      --us-blue-light: #1a4a8a;
+      --us-red: #BF0A30;
+      --us-red-light: #e0334f;
+      --gold: #c9a84c;
+      --gold-light: #e0c068;
+      --gold-dim: rgba(201,168,76,0.12);
+      --blue: #1f6feb;
+      --green: #238636;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --user-bg: #1a2540;
+      --ai-bg: #161b22;
+      --consultation-bg: rgba(0,40,104,0.06);
+      --error: #f85149;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      display: flex;
+      height: 100vh;
+    }
+
+    /* === SIDEBAR === */
+    .sidebar {
+      width: 290px;
+      min-width: 290px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+      gap: 18px;
+      overflow-y: auto;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+    }
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--us-blue), var(--us-red));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .logo-text h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+    .logo-text p { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Language Selector */
+    .language-selector {
+      display: flex;
+      gap: 6px;
+    }
+    .lang-btn {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      font-weight: 600;
+    }
+    .lang-btn.active {
+      border-color: var(--us-blue);
+      background: rgba(0,40,104,0.15);
+      color: #58a6ff;
+    }
+    .lang-btn:hover { border-color: var(--us-blue-light); }
+
+    .new-conv-btn {
+      background: linear-gradient(135deg, var(--us-blue), var(--us-red));
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 11px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: opacity 0.2s;
+    }
+    .new-conv-btn:hover { opacity: 0.9; }
+
+    .sidebar-section { border-top: 1px solid var(--border); padding-top: 16px; }
+    .sidebar-section h3 { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+
+    .mode-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .mode-card:hover { border-color: var(--us-blue-light); background: rgba(0,40,104,0.06); }
+    .mode-card .mode-icon { font-size: 18px; margin-bottom: 6px; }
+    .mode-card h4 { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .mode-card p { font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.5; }
+    .mode-card.active { border-color: var(--us-blue); background: rgba(0,40,104,0.1); }
+    .mode-card.forced { border-color: var(--us-blue); box-shadow: 0 0 0 2px rgba(0,40,104,0.25); }
+
+    .codes-list { list-style: none; }
+    .codes-list li {
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 3px 0;
+      border-left: 2px solid var(--us-blue);
+      padding-left: 8px;
+      margin-bottom: 2px;
+    }
+
+    .settings-group { margin-bottom: 12px; }
+    .settings-group label { font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 6px; }
+    .settings-group input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 11px;
+      padding: 8px 10px;
+      outline: none;
+    }
+    .settings-group input:focus { border-color: var(--us-blue); }
+
+    .voice-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .toggle-switch {
+      width: 36px;
+      height: 20px;
+      background: var(--border);
+      border-radius: 10px;
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-switch.on { background: var(--us-blue); }
+    .toggle-knob {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle-switch.on .toggle-knob { transform: translateX(16px); }
+
+    /* === MAIN AREA === */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .header {
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+    .status-dot.offline { background: var(--error); }
+    .mode-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid;
+      transition: all 0.3s;
+    }
+    .mode-badge.question { color: #58a6ff; border-color: #1f6feb; background: rgba(31,111,235,0.1); }
+    .mode-badge.consultation { color: var(--gold); border-color: var(--gold); background: var(--gold-dim); }
+    .mode-badge.strategie { color: #ff6b6b; border-color: #e63946; background: rgba(230,57,70,0.1); }
+    .mode-badge.simulateur { color: #c77dff; border-color: #7b2d8b; background: rgba(123,45,139,0.1); }
+
+    /* Chat area */
+    .chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scroll-behavior: smooth;
+    }
+    .chat-area::-webkit-scrollbar { width: 6px; }
+    .chat-area::-webkit-scrollbar-track { background: transparent; }
+    .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Welcome */
+    .welcome {
+      text-align: center;
+      padding: 40px 20px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .welcome-icon { font-size: 56px; margin-bottom: 16px; }
+    .welcome h2 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .welcome p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px; }
+    .welcome-examples { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+    .example-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      line-height: 1.4;
+    }
+    .example-chip:hover { border-color: var(--us-blue); color: var(--text-primary); background: rgba(0,40,104,0.08); }
+    .example-chip strong { color: var(--us-blue-light); display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+
+    /* Messages */
+    .message { display: flex; gap: 12px; align-items: flex-start; max-width: 85%; }
+    .message.user { flex-direction: row-reverse; align-self: flex-end; }
+    .message.ai { align-self: flex-start; }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .avatar.ai-avatar { background: linear-gradient(135deg, var(--us-blue), #1a2a4a); border: 1px solid var(--us-blue-light); }
+    .avatar.user-avatar { background: var(--user-bg); border: 1px solid var(--blue); font-size: 14px; }
+
+    .bubble {
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.6;
+      max-width: 100%;
+    }
+    .message.user .bubble {
+      background: var(--user-bg);
+      border: 1px solid rgba(31,111,235,0.3);
+      border-top-right-radius: 4px;
+    }
+    .message.ai .bubble {
+      background: var(--ai-bg);
+      border: 1px solid var(--border);
+      border-top-left-radius: 4px;
+    }
+    .bubble.consultation-bubble { background: var(--consultation-bg); border-color: rgba(0,40,104,0.25); }
+
+    /* Consultation structured response */
+    .analysis-container { display: flex; flex-direction: column; gap: 12px; }
+    .analysis-section {
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .analysis-header {
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .analysis-header:hover { background: rgba(255,255,255,0.03); }
+    .analysis-header.faits { border-left: 3px solid #58a6ff; color: #58a6ff; }
+    .analysis-header.questions { border-left: 3px solid #a371f7; color: #a371f7; }
+    .analysis-header.problemes { border-left: 3px solid #f0883e; color: #f0883e; }
+    .analysis-header.textes { border-left: 3px solid var(--us-blue-light); color: #58a6ff; }
+    .analysis-header.analyse { border-left: 3px solid #3fb950; color: #3fb950; }
+    .analysis-header.elements { border-left: 3px solid #20b2aa; color: #20b2aa; }
+    .analysis-header.orientations { border-left: 3px solid var(--gold); color: var(--gold); }
+    .analysis-header.garde { border-left: 3px solid var(--error); color: var(--error); background: rgba(248,81,73,0.05); }
+
+    /* Strategie Layout */
+    .strategie-container { display: flex; flex-direction: column; gap: 12px; }
+    .strategie-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 700px) { .strategie-columns { grid-template-columns: 1fr; } }
+    .strategie-section {
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .strategie-header {
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .strategie-header:hover { background: rgba(255,255,255,0.03); }
+    .strategie-header.adverse { border-left: 3px solid #e63946; color: #ff6b6b; }
+    .strategie-header.defense { border-left: 3px solid #3fb950; color: #3fb950; }
+    .strategie-header.bilan { border-left: 3px solid var(--gold); color: var(--gold); }
+    .strategie-header.etapes { border-left: 3px solid #58a6ff; color: #58a6ff; }
+    .strategie-body {
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Simulateur */
+    .simulateur-container { display: flex; flex-direction: column; gap: 12px; }
+    .simulateur-header-banner {
+      background: linear-gradient(135deg, rgba(123,45,139,0.15), rgba(123,45,139,0.05));
+      border: 1px solid rgba(123,45,139,0.4);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 11px;
+      color: #c77dff;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+    .simulateur-warning {
+      background: rgba(248,81,73,0.06);
+      border: 1px solid rgba(248,81,73,0.2);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .simulateur-section {
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .simulateur-sec-header {
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .simulateur-sec-header:hover { background: rgba(255,255,255,0.03); }
+    .simulateur-sec-header.identification { border-left: 3px solid #c77dff; color: #c77dff; }
+    .simulateur-sec-header.accusation { border-left: 3px solid #e63946; color: #ff6b6b; }
+    .simulateur-sec-header.defense { border-left: 3px solid #3fb950; color: #3fb950; }
+    .simulateur-sec-header.juge { border-left: 3px solid var(--gold); color: var(--gold); }
+    .simulateur-sec-header.verdict { border-left: 3px solid #58a6ff; color: #58a6ff; }
+    .simulateur-sec-body {
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      border-top: 1px solid var(--border);
+    }
+    .analysis-body {
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      border-top: 1px solid var(--border);
+    }
+    .analysis-toggle { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+
+    /* Markdown in bubbles */
+    .bubble-text p { margin-bottom: 8px; }
+    .bubble-text p:last-child { margin-bottom: 0; }
+    .bubble-text strong { color: var(--text-primary); }
+    .bubble-text ul, .bubble-text ol { padding-left: 20px; margin: 6px 0; }
+    .bubble-text li { margin-bottom: 4px; }
+    .bubble-text code {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    /* Typing indicator */
+    .typing-indicator { display: flex; align-items: center; gap: 6px; padding: 14px 18px; }
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--us-blue-light);
+      border-radius: 50%;
+      animation: typingBounce 1.4s infinite;
+      opacity: 0.6;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce { 0%, 80%, 100% { transform: scale(1); opacity: 0.6; } 40% { transform: scale(1.3); opacity: 1; } }
+
+    /* Input area */
+    .input-area {
+      background: var(--bg-sidebar);
+      border-top: 1px solid var(--border);
+      padding: 16px 24px;
+      flex-shrink: 0;
+    }
+    .input-disclaimer {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    #modeIndicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 5px 10px;
+      background: rgba(0,40,104,0.1);
+      border: 1px solid rgba(0,40,104,0.3);
+      border-radius: 20px;
+      width: fit-content;
+      font-size: 11px;
+      color: #58a6ff;
+      font-weight: 600;
+    }
+    #modeIndicator.visible { display: flex; }
+    #modeIndicator button {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0;
+      line-height: 1;
+    }
+    #modeIndicator button:hover { color: var(--error); }
+
+    .input-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      transition: border-color 0.2s;
+    }
+    .input-row:focus-within { border-color: var(--us-blue); }
+
+    #messageInput {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      max-height: 120px;
+      min-height: 22px;
+      line-height: 1.5;
+    }
+    #messageInput::placeholder { color: var(--text-muted); }
+
+    .input-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .input-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+    .input-btn:disabled { opacity: 0.3; cursor: default; }
+
+    .send-btn {
+      background: linear-gradient(135deg, var(--us-blue), var(--us-red));
+      color: #fff;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    .send-btn:hover { opacity: 0.9; color: #fff; }
+    .send-btn:disabled { background: var(--border); color: var(--text-muted); }
+
+    .mic-btn.recording {
+      color: var(--error);
+      animation: micPulse 1s infinite;
+    }
+    @keyframes micPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* Audio Controls */
+    .audio-bar {
+      position: fixed;
+      bottom: 90px;
+      right: 16px;
+      background: var(--bg-card);
+      border: 1px solid rgba(0,40,104,0.5);
+      border-radius: 30px;
+      padding: 8px 14px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      z-index: 500;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      animation: slideInRight 0.3s ease;
+    }
+    .audio-bar.visible { display: flex; }
+    @keyframes slideInRight { from { transform: translateX(130%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .audio-bar-label { font-size: 11px; color: #58a6ff; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .audio-bar-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 17px;
+      padding: 3px 6px;
+      border-radius: 6px;
+      color: var(--text-primary);
+      transition: background 0.15s;
+      line-height: 1;
+    }
+    .audio-bar-btn:hover { background: rgba(255,255,255,0.1); }
+
+    .bubble-toolbar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    .bubble-speak-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 3px 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: inherit;
+    }
+    .bubble-speak-btn:hover { border-color: var(--us-blue); color: #58a6ff; background: rgba(0,40,104,0.1); }
+
+    .section-speak-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: transparent;
+      margin-left: auto;
+      margin-right: 6px;
+      transition: color 0.15s;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .analysis-header:hover .section-speak-btn,
+    .strategie-header:hover .section-speak-btn,
+    .simulateur-sec-header:hover .section-speak-btn { color: var(--text-muted); }
+    .section-speak-btn:hover { color: #58a6ff !important; }
+
+    /* Notification */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      max-width: 320px;
+    }
+    .notification.error { background: #3d1a1a; border: 1px solid var(--error); color: #ffa0a0; }
+    .notification.success { background: #1a3d1a; border: 1px solid var(--green); color: #80ff80; }
+    .notification.info { background: #1a2a3d; border: 1px solid var(--blue); color: #80c0ff; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    .sidebar-close-btn {
+      display: none;
+      position: absolute;
+      top: 14px;
+      right: 12px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 22px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      line-height: 1;
+      transition: color 0.2s;
+      z-index: 101;
+    }
+    .sidebar-close-btn:hover { color: var(--text-primary); }
+
+    .hamburger-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 6px;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+    .hamburger-btn:hover { color: var(--text-primary); }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 99;
+    }
+    .sidebar-overlay.visible { display: block; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: 0; min-width: 0; padding: 0; overflow: hidden; transition: width 0.25s; }
+      .sidebar.open {
+        width: 290px; min-width: 290px; padding: 20px 16px;
+        position: fixed; z-index: 100; height: 100%; top: 0; left: 0;
+        overflow-y: auto;
+      }
+      .message { max-width: 95%; }
+      .hamburger-btn { display: flex; align-items: center; }
+      .sidebar-close-btn { display: block; }
+      .sidebar { position: relative; }
+      .input-area { padding: 10px 12px; padding-bottom: env(safe-area-inset-bottom, 10px); }
+      body { height: 100dvh; }
+      html { height: 100dvh; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Close">&#10005;</button>
+    <div class="logo">
+      <div class="logo-icon">&#9878;</div>
+      <span style="font-size:26px; flex-shrink:0; line-height:1;">&#127482;&#127480;</span>
+      <div class="logo-text">
+        <h1>Justice AI</h1>
+        <p id="logoSubtitle">US Legal Advisor</p>
+      </div>
+    </div>
+
+    <!-- Language Selector -->
+    <div class="language-selector">
+      <button class="lang-btn active" id="langEn" onclick="setLanguage('en')">&#127482;&#127480; English</button>
+      <button class="lang-btn" id="langFr" onclick="setLanguage('fr')">&#127467;&#127479; Francais</button>
+    </div>
+
+    <button class="new-conv-btn" id="newConvBtn" onclick="newConversation()">
+      <span>+</span> <span id="newConvLabel">New Case</span>
+    </button>
+
+    <div class="sidebar-section">
+      <h3 id="modesTitle">Modes</h3>
+      <div class="mode-card" id="card-question" onclick="setForcedMode('question')">
+        <div class="mode-icon">&#128309;</div>
+        <h4 id="cardQuestionTitle">Legal Question</h4>
+        <p id="cardQuestionDesc">Ask a question about US federal law and get a precise, cited answer.</p>
+      </div>
+      <div class="mode-card" id="card-consultation" onclick="setForcedMode('consultation')">
+        <div class="mode-icon">&#128993;</div>
+        <h4 id="cardConsultTitle">Legal Consultation</h4>
+        <p id="cardConsultDesc">Present your situation and receive a structured 8-part analysis: facts, legal issues, applicable law, evidence needed...</p>
+      </div>
+      <div class="mode-card" id="card-strategie" onclick="setForcedMode('strategie')">
+        <div class="mode-icon">&#9876;</div>
+        <h4 id="cardStratTitle">Legal Strategy</h4>
+        <p id="cardStratDesc">Get a defense strategy: opposing arguments, defense angles, strengths and weaknesses.</p>
+      </div>
+      <div class="mode-card" id="card-simulateur" onclick="setForcedMode('simulateur')">
+        <div class="mode-icon">&#127917;</div>
+        <h4 id="cardSimTitle">Trial Simulator</h4>
+        <p id="cardSimDesc">Simulate case proceedings: arguments, judge's questions, probable verdict.</p>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3 id="codesTitle">Available Codes</h3>
+      <ul class="codes-list" id="codesList">
+        <li>US Constitution (7 Articles + 27 Amendments)</li>
+        <li>Title 18 USC - Crimes &amp; Criminal Procedure</li>
+        <li>Title 26 USC - Internal Revenue Code (Tax)</li>
+        <li>Title 29 USC - Labor</li>
+        <li>Title 15 USC - Commerce &amp; Trade</li>
+        <li>Title 42 USC - Public Health &amp; Civil Rights</li>
+        <li>Title 33 USC - Clean Water Act</li>
+        <li>Federal Rules of Civil Procedure (FRCP)</li>
+        <li>Federal Rules of Criminal Procedure</li>
+        <li>Uniform Commercial Code (UCC)</li>
+        <li>Title 30 USC - Mining</li>
+        <li>Title 8 USC - Immigration &amp; Nationality</li>
+      </ul>
+    </div>
+
+    <div class="sidebar-section">
+      <h3 id="settingsTitle">Settings</h3>
+      <div class="settings-group">
+        <label id="webhookLabel">N8N Webhook URL</label>
+        <input type="text" id="webhookUrl" placeholder="https://...webhook/us-legal-advisor" value="">
+      </div>
+      <label class="voice-toggle" onclick="toggleVoice()">
+        <div class="toggle-switch" id="voiceToggle">
+          <div class="toggle-knob"></div>
+        </div>
+        <span id="voiceLabel">Voice Responses</span>
+      </label>
+    </div>
+  </aside>
+
+  <!-- Overlay mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <!-- MAIN -->
+  <main class="main">
+    <header class="header">
+      <div class="header-left">
+        <button class="hamburger-btn" onclick="toggleSidebar()" title="Menu">&#9776;</button>
+        <div class="header-status">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Ready</span>
+        </div>
+      </div>
+      <div style="text-align:center; flex:1;">
+        <span style="font-size:13px; font-weight:600; color:#fff;">&#9878; Justice AI &ndash; <span id="headerSubtitle">US Legal Advisor</span></span>
+        <br><span style="font-size:11px; color:var(--text-muted);" id="headerCodes">Federal Law &middot; 12 Legal Codes</span>
+      </div>
+      <div class="mode-badge question" id="modeBadge">Question</div>
+    </header>
+
+    <div class="chat-area" id="chatArea">
+      <!-- Welcome -->
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">&#9878;</div>
+        <h2 id="welcomeTitle">Welcome, I'm Justice AI</h2>
+        <p id="welcomeText">Your AI legal advisor, expert in US federal law.<br>
+        I can answer your <strong style="color:#58a6ff">legal questions</strong> or analyze
+        your <strong style="color:var(--gold)">legal situation</strong> and provide guidance.</p>
+        <div class="welcome-examples" id="examplesContainer">
+          <div class="example-chip" onclick="sendExample('en')" data-q-en="What are the Miranda rights and when must they be read to a suspect?" data-q-fr="Quels sont les droits Miranda et quand doivent-ils etre lus a un suspect ?">
+            <strong>&#128309; Legal Question</strong>
+            <span class="ex-text">What are the Miranda rights and when must they be read to a suspect?</span>
+          </div>
+          <div class="example-chip" onclick="sendExample('en')" data-q-en="My employer terminated me without notice after 5 years of service. They refuse to pay severance and destroyed my employment contract. I was never given a reason for my termination." data-q-fr="Mon employeur m'a licencie sans preavis apres 5 ans de service. Il refuse de me payer mes indemnites et a detruit mon contrat de travail. On ne m'a jamais donne de raison.">
+            <strong>&#128993; Consultation &ndash; Employment Law</strong>
+            <span class="ex-text">My employer terminated me without notice after 5 years. They refuse to pay severance and destroyed my contract.</span>
+          </div>
+          <div class="example-chip" onclick="sendExample('en')" data-q-en="What constitutional amendments protect freedom of speech and what are their limits?" data-q-fr="Quels amendements constitutionnels protegent la liberte d'expression et quelles sont leurs limites ?">
+            <strong>&#128309; Legal Question &ndash; Constitutional Law</strong>
+            <span class="ex-text">What constitutional amendments protect freedom of speech and their limits?</span>
+          </div>
+          <div class="example-chip" onclick="sendExample('en')" data-q-en="I signed a lease 2 years ago. My landlord wants to evict me without cause and has cut off water and electricity to force me out. What are my legal options?" data-q-fr="J'ai signe un bail il y a 2 ans. Mon proprietaire veut m'expulser sans motif et a coupe l'eau et l'electricite. Quelles sont mes options juridiques ?">
+            <strong>&#128993; Consultation &ndash; Real Estate</strong>
+            <span class="ex-text">My landlord wants to evict me without cause and cut off utilities. What are my options?</span>
+          </div>
+          <div class="example-chip" onclick="sendExample('en')" data-q-en="My employer wrongfully terminated me and refuses to pay severance. What legal strategy should I adopt if I take the case to employment court?" data-q-fr="Mon employeur m'a licencie abusivement et refuse de me payer mes indemnites. Quelle strategie juridique adopter si je porte l'affaire devant le tribunal ?">
+            <strong>&#9876; Legal Strategy</strong>
+            <span class="ex-text">Wrongful termination - what legal strategy should I adopt in court?</span>
+          </div>
+          <div class="example-chip" onclick="sendExample('en')" data-q-en="Simulate a trial for wrongful termination: an employee claims severance and damages after 5 years of service, employer denies all claims." data-q-fr="Simule un proces pour licenciement abusif : un employe reclame des indemnites apres 5 ans de service, l'employeur nie toutes les reclamations.">
+            <strong>&#127917; Trial Simulator</strong>
+            <span class="ex-text">Simulate a wrongful termination trial with claims for damages.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-disclaimer" id="disclaimer">
+        &#9888; For informational purposes only &ndash; Consult a licensed attorney for legal advice
+      </div>
+      <div id="modeIndicator">
+        <span id="modeIndicatorLabel">&#128274; Mode: Question</span>
+        <button onclick="setForcedMode(forcedMode)" title="Disable forced mode">&#10005;</button>
+      </div>
+      <div class="input-row">
+        <textarea id="messageInput" placeholder="Ask a legal question or describe your situation..." rows="1"
+          onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
+        <button class="input-btn mic-btn" id="micBtn" onclick="toggleRecording()" title="Voice input">
+          &#127908;
+        </button>
+        <button class="input-btn send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+          &#10148;
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Audio control bar -->
+  <div class="audio-bar" id="audioBar">
+    <span>&#128266;</span>
+    <span class="audio-bar-label" id="audioBarLabel">Reading...</span>
+    <button class="audio-bar-btn" id="pauseResumeBtn" onclick="pauseResumeSpeech()" title="Pause">&#9208;</button>
+    <button class="audio-bar-btn" onclick="stopSpeech()" title="Stop">&#9209;</button>
+  </div>
+
+  <script>
+    // ========== TRANSLATIONS ==========
+    const T = {
+      en: {
+        logoSub: 'US Legal Advisor',
+        newConv: 'New Case',
+        modes: 'Modes',
+        cardQuestion: 'Legal Question',
+        cardQuestionDesc: 'Ask a question about US federal law and get a precise, cited answer.',
+        cardConsult: 'Legal Consultation',
+        cardConsultDesc: 'Present your situation and receive a structured 8-part analysis: facts, legal issues, applicable law, evidence needed...',
+        cardStrat: 'Legal Strategy',
+        cardStratDesc: 'Get a defense strategy: opposing arguments, defense angles, strengths and weaknesses.',
+        cardSim: 'Trial Simulator',
+        cardSimDesc: 'Simulate case proceedings: arguments, judge\'s questions, probable verdict.',
+        codesTitle: 'Available Codes',
+        codes: [
+          'US Constitution (7 Articles + 27 Amendments)',
+          'Title 18 USC - Crimes & Criminal Procedure',
+          'Title 26 USC - Internal Revenue Code (Tax)',
+          'Title 29 USC - Labor',
+          'Title 15 USC - Commerce & Trade',
+          'Title 42 USC - Public Health & Civil Rights',
+          'Title 33 USC - Clean Water Act',
+          'Federal Rules of Civil Procedure (FRCP)',
+          'Federal Rules of Criminal Procedure',
+          'Uniform Commercial Code (UCC)',
+          'Title 30 USC - Mining',
+          'Title 8 USC - Immigration & Nationality'
+        ],
+        settings: 'Settings',
+        webhookLabel: 'N8N Webhook URL',
+        voiceLabel: 'Voice Responses',
+        ready: 'Ready',
+        analyzing: 'Analyzing...',
+        headerSub: 'US Legal Advisor',
+        headerCodes: 'Federal Law \u00b7 12 Legal Codes',
+        welcomeTitle: 'Welcome, I\'m Justice AI',
+        welcomeText: 'Your AI legal advisor, expert in US federal law.<br>I can answer your <strong style="color:#58a6ff">legal questions</strong> or analyze your <strong style="color:var(--gold)">legal situation</strong> and provide guidance.',
+        disclaimer: '\u26a0 For informational purposes only \u2013 Consult a licensed attorney for legal advice',
+        placeholder: 'Ask a legal question or describe your situation...',
+        placeholders: {
+          question: 'Ask your legal question...',
+          consultation: 'Describe your situation in detail for a complete 8-section analysis...',
+          strategie: 'Describe your dispute and the defense strategy you want...',
+          simulateur: 'Describe the case to simulate (e.g., "Simulate the trial of...")...'
+        },
+        modeLabels: {
+          question: '\ud83d\udd35 Mode: Question',
+          consultation: '\ud83d\udfe1 Mode: Consultation',
+          strategie: '\u2694\ufe0f Mode: Strategy',
+          simulateur: '\ud83c\udfad Mode: Simulator'
+        },
+        badgeLabels: { question: 'Question', consultation: 'Consultation', strategie: 'Strategy', simulateur: 'Simulator' },
+        listenAll: '\ud83d\udd0a Listen All',
+        reading: 'Reading...',
+        fullResponse: 'Full response',
+        questionLabel: '\ud83d\udd35 LEGAL RESPONSE',
+        consultLabel: '\ud83d\udfe1 LEGAL CONSULTATION',
+        stratLabel: '\u2694\ufe0f LEGAL STRATEGY',
+        simLabel: '\ud83c\udfad TRIAL SIMULATOR',
+        simBanner: 'EDUCATIONAL SIMULATION \u00b7 CASE No.',
+        simBannerSuffix: '\u00b7 US FEDERAL LAW',
+        simWarning: '\u26a0\ufe0f This simulation is educational and does not constitute legal advice. Arguments presented are illustrative.',
+        errorMsg: 'Connection error. Check the webhook URL and that the workflow is active.',
+        corsWarn: '\u26a0\ufe0f Open this file via a server (localhost) to avoid CORS errors',
+        // Consultation sections
+        secFacts: 'Factual Analysis',
+        secQuestions: 'Central Legal Questions',
+        secIssues: 'Legal Issues',
+        secLaw: 'Applicable Law',
+        secAnalysis: 'Legal Analysis',
+        secEvidence: 'Evidence to Gather',
+        secRecommend: 'Recommendations & Guidance',
+        secWarning: 'Important Disclaimer',
+        // Strategie sections
+        secAdverse: 'Opposing Party\'s Position',
+        secDefense: 'Recommended Defense Strategy',
+        secBalance: 'Strengths & Weaknesses',
+        secSteps: 'Concrete Next Steps',
+        // Simulateur sections
+        secIdent: 'Case Identification',
+        secAccus: 'Prosecution / Plaintiff Arguments',
+        secDefSim: 'Defense Arguments',
+        secJudge: 'Probable Judge Questions',
+        secVerdict: 'Probable Verdict & Alternatives',
+        // Examples
+        examples: [
+          { label: '\ud83d\udd35 Legal Question', text: 'What are the Miranda rights and when must they be read to a suspect?' },
+          { label: '\ud83d\udfe1 Consultation \u2013 Employment Law', text: 'My employer terminated me without notice after 5 years. They refuse to pay severance and destroyed my contract.' },
+          { label: '\ud83d\udd35 Legal Question \u2013 Constitutional Law', text: 'What constitutional amendments protect freedom of speech and their limits?' },
+          { label: '\ud83d\udfe1 Consultation \u2013 Real Estate', text: 'My landlord wants to evict me without cause and cut off utilities. What are my options?' },
+          { label: '\u2694\ufe0f Legal Strategy', text: 'Wrongful termination - what legal strategy should I adopt in court?' },
+          { label: '\ud83c\udfad Trial Simulator', text: 'Simulate a wrongful termination trial with claims for damages.' }
+        ]
+      },
+      fr: {
+        logoSub: 'Conseiller Juridique US',
+        newConv: 'Nouveau Dossier',
+        modes: 'Modes',
+        cardQuestion: 'Question Juridique',
+        cardQuestionDesc: 'Posez une question sur le droit federal americain et obtenez une reponse precise et citee.',
+        cardConsult: 'Consultation Juridique',
+        cardConsultDesc: 'Exposez votre situation et recevez une analyse structuree en 8 parties : faits, questions, textes, strategie, preuves...',
+        cardStrat: 'Strategie Juridique',
+        cardStratDesc: 'Obtenez une strategie de defense : arguments adverses, angles de defense, forces et faiblesses.',
+        cardSim: 'Simulateur de Proces',
+        cardSimDesc: 'Simulez le deroulement d\'une affaire : plaidoiries, questions du juge, verdict probable.',
+        codesTitle: 'Codes Disponibles',
+        codes: [
+          'Constitution des Etats-Unis (7 Articles + 27 Amendements)',
+          'Titre 18 USC - Crimes et Procedure Penale',
+          'Titre 26 USC - Code Fiscal (IRC)',
+          'Titre 29 USC - Droit du Travail',
+          'Titre 15 USC - Commerce et Echanges',
+          'Titre 42 USC - Sante Publique et Droits Civiques',
+          'Titre 33 USC - Loi sur l\'eau propre',
+          'Regles Federales de Procedure Civile (FRCP)',
+          'Regles Federales de Procedure Penale',
+          'Code de Commerce Uniforme (UCC)',
+          'Titre 30 USC - Mines',
+          'Titre 8 USC - Immigration et Nationalite'
+        ],
+        settings: 'Parametres',
+        webhookLabel: 'URL du Webhook N8N',
+        voiceLabel: 'Reponses vocales',
+        ready: 'Pret',
+        analyzing: 'Analyse en cours...',
+        headerSub: 'Conseiller Juridique US',
+        headerCodes: 'Droit Federal \u00b7 12 Codes Juridiques',
+        welcomeTitle: 'Bienvenue, je suis Justice AI',
+        welcomeText: 'Votre conseiller juridique IA, expert en droit federal americain.<br>Je peux repondre a vos <strong style="color:#58a6ff">questions de droit</strong> ou analyser votre <strong style="color:var(--gold)">situation juridique</strong> et vous proposer des orientations.',
+        disclaimer: '\u26a0 Usage informatif uniquement \u2013 Consultez un avocat agree pour vos affaires juridiques',
+        placeholder: 'Posez une question juridique ou exposez votre situation...',
+        placeholders: {
+          question: 'Posez votre question juridique...',
+          consultation: 'Exposez votre situation en detail pour une analyse en 8 sections...',
+          strategie: 'Decrivez votre litige et la strategie souhaitee...',
+          simulateur: 'Decrivez l\'affaire a simuler (ex : "Simule le proces de...")...'
+        },
+        modeLabels: {
+          question: '\ud83d\udd35 Mode : Question',
+          consultation: '\ud83d\udfe1 Mode : Consultation',
+          strategie: '\u2694\ufe0f Mode : Strategie',
+          simulateur: '\ud83c\udfad Mode : Simulateur'
+        },
+        badgeLabels: { question: 'Question', consultation: 'Consultation', strategie: 'Strategie', simulateur: 'Simulateur' },
+        listenAll: '\ud83d\udd0a Ecouter tout',
+        reading: 'Lecture...',
+        fullResponse: 'Reponse complete',
+        questionLabel: '\ud83d\udd35 REPONSE JURIDIQUE',
+        consultLabel: '\ud83d\udfe1 CONSULTATION JURIDIQUE',
+        stratLabel: '\u2694\ufe0f STRATEGIE JURIDIQUE',
+        simLabel: '\ud83c\udfad SIMULATEUR DE PROCES',
+        simBanner: 'SIMULATION PEDAGOGIQUE \u00b7 DOSSIER N\u00b0',
+        simBannerSuffix: '\u00b7 DROIT FEDERAL US',
+        simWarning: '\u26a0\ufe0f Cette simulation est pedagogique et ne constitue pas un avis juridique. Les arguments presentes sont illustratifs.',
+        errorMsg: 'Erreur de connexion. Verifiez l\'URL du webhook et que le workflow est actif.',
+        corsWarn: '\u26a0\ufe0f Ouvrez ce fichier via un serveur (localhost) pour eviter les erreurs CORS',
+        secFacts: 'Analyse des Faits',
+        secQuestions: 'Questions Juridiques Centrales',
+        secIssues: 'Problemes Juridiques',
+        secLaw: 'Textes Applicables',
+        secAnalysis: 'Analyse Juridique',
+        secEvidence: 'Elements a Reunir',
+        secRecommend: 'Orientations & Recommandations',
+        secWarning: 'Mise en Garde',
+        secAdverse: 'Position de la Partie Adverse',
+        secDefense: 'Strategie de Defense Recommandee',
+        secBalance: 'Forces & Faiblesses',
+        secSteps: 'Prochaines Etapes Concretes',
+        secIdent: 'Identification du Dossier',
+        secAccus: 'Arguments de l\'Accusation / Plaignant',
+        secDefSim: 'Arguments de la Defense',
+        secJudge: 'Questions Probables du Juge',
+        secVerdict: 'Verdict Probable & Alternatives',
+        examples: [
+          { label: '\ud83d\udd35 Question Juridique', text: 'Quels sont les droits Miranda et quand doivent-ils etre lus a un suspect ?' },
+          { label: '\ud83d\udfe1 Consultation \u2013 Droit du Travail', text: 'Mon employeur m\'a licencie sans preavis apres 5 ans. Il refuse de payer mes indemnites et a detruit mon contrat.' },
+          { label: '\ud83d\udd35 Question \u2013 Droit Constitutionnel', text: 'Quels amendements protegent la liberte d\'expression et quelles sont leurs limites ?' },
+          { label: '\ud83d\udfe1 Consultation \u2013 Immobilier', text: 'Mon proprietaire veut m\'expulser sans motif et a coupe l\'eau et l\'electricite. Quelles sont mes options ?' },
+          { label: '\u2694\ufe0f Strategie Juridique', text: 'Licenciement abusif - quelle strategie juridique adopter devant le tribunal ?' },
+          { label: '\ud83c\udfad Simulateur de Proces', text: 'Simule un proces pour licenciement abusif avec demande de dommages.' }
+        ]
+      }
+    };
+
+    // ========== STATE ==========
+    let currentLanguage = localStorage.getItem('us_legal_language') || 'en';
+    let isRecording = false;
+    let recognition = null;
+    let voiceOutputEnabled = true;
+    let currentSpeech = null;
+    let history = [];
+    let sessionId = 'session_' + Date.now();
+    let isLoading = false;
+    let forcedMode = null;
+    let isSpeechPaused = false;
+    let responseCounter = 0;
+    const responseTexts = new Map();
+
+    const DEFAULT_WEBHOOK = 'https://mmdrame2017.app.n8n.cloud/webhook/us-legal-advisor';
+    const API_SECRET = 'US_LEGAL_2026_a3f7c9e1b4d6a8f2c0e5b7d9a1f3c5e7';
+
+    function t(key) { return T[currentLanguage][key] || T['en'][key] || key; }
+
+    // ========== INIT ==========
+    document.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('us_legal_webhook_url');
+      if (saved && saved.includes('mmdrame2017')) {
+        document.getElementById('webhookUrl').value = saved;
+      } else {
+        localStorage.removeItem('us_legal_webhook_url');
+        document.getElementById('webhookUrl').value = DEFAULT_WEBHOOK;
+      }
+
+      const savedVoice = localStorage.getItem('us_legal_voice_output');
+      voiceOutputEnabled = savedVoice !== 'false';
+      updateVoiceToggle();
+
+      // Restore language
+      if (currentLanguage === 'fr') {
+        document.getElementById('langEn').classList.remove('active');
+        document.getElementById('langFr').classList.add('active');
+      }
+      updateUILanguage();
+      setupSpeechRecognition();
+
+      if (location.protocol === 'file:') {
+        showNotification(t('corsWarn'), 'error');
+      }
+    });
+
+    function getWebhookUrl() {
+      const url = document.getElementById('webhookUrl').value.trim();
+      localStorage.setItem('us_legal_webhook_url', url);
+      return url || DEFAULT_WEBHOOK;
+    }
+
+    // ========== LANGUAGE ==========
+    function setLanguage(lang) {
+      currentLanguage = lang;
+      localStorage.setItem('us_legal_language', lang);
+      document.getElementById('langEn').classList.toggle('active', lang === 'en');
+      document.getElementById('langFr').classList.toggle('active', lang === 'fr');
+      document.documentElement.lang = lang;
+      updateUILanguage();
+      setupSpeechRecognition();
+    }
+
+    function updateUILanguage() {
+      const l = T[currentLanguage];
+      document.getElementById('logoSubtitle').textContent = l.logoSub;
+      document.getElementById('newConvLabel').textContent = l.newConv;
+      document.getElementById('modesTitle').textContent = l.modes;
+      document.getElementById('cardQuestionTitle').textContent = l.cardQuestion;
+      document.getElementById('cardQuestionDesc').textContent = l.cardQuestionDesc;
+      document.getElementById('cardConsultTitle').textContent = l.cardConsult;
+      document.getElementById('cardConsultDesc').textContent = l.cardConsultDesc;
+      document.getElementById('cardStratTitle').textContent = l.cardStrat;
+      document.getElementById('cardStratDesc').textContent = l.cardStratDesc;
+      document.getElementById('cardSimTitle').textContent = l.cardSim;
+      document.getElementById('cardSimDesc').textContent = l.cardSimDesc;
+      document.getElementById('codesTitle').textContent = l.codesTitle;
+      document.getElementById('settingsTitle').textContent = l.settings;
+      document.getElementById('webhookLabel').textContent = l.webhookLabel;
+      document.getElementById('voiceLabel').textContent = l.voiceLabel;
+      document.getElementById('headerSubtitle').textContent = l.headerSub;
+      document.getElementById('headerCodes').textContent = l.headerCodes;
+      document.getElementById('disclaimer').innerHTML = l.disclaimer;
+
+      // Codes list
+      const codesList = document.getElementById('codesList');
+      codesList.innerHTML = l.codes.map(c => '<li>' + c + '</li>').join('');
+
+      // Status text (only if not loading)
+      if (!isLoading) document.getElementById('statusText').textContent = l.ready;
+
+      // Placeholder
+      const textarea = document.getElementById('messageInput');
+      if (forcedMode) {
+        textarea.placeholder = l.placeholders[forcedMode] || l.placeholder;
+      } else {
+        textarea.placeholder = l.placeholder;
+      }
+
+      // Welcome (if visible)
+      const welcome = document.getElementById('welcome');
+      if (welcome) {
+        document.getElementById('welcomeTitle').textContent = l.welcomeTitle;
+        document.getElementById('welcomeText').innerHTML = l.welcomeText;
+        updateExamples();
+      }
+
+      // Mode indicator
+      if (forcedMode) {
+        document.getElementById('modeIndicatorLabel').textContent = l.modeLabels[forcedMode];
+      }
+    }
+
+    function updateExamples() {
+      const container = document.getElementById('examplesContainer');
+      if (!container) return;
+      const examples = t('examples');
+      const chips = container.querySelectorAll('.example-chip');
+      chips.forEach((chip, i) => {
+        if (examples[i]) {
+          chip.querySelector('strong').textContent = examples[i].label;
+          chip.querySelector('.ex-text').textContent = examples[i].text;
+        }
+      });
+    }
+
+    // ========== VOICE TOGGLE ==========
+    function toggleVoice() {
+      voiceOutputEnabled = !voiceOutputEnabled;
+      localStorage.setItem('us_legal_voice_output', voiceOutputEnabled);
+      updateVoiceToggle();
+      if (!voiceOutputEnabled && currentSpeech) { window.speechSynthesis.cancel(); }
+    }
+    function updateVoiceToggle() {
+      document.getElementById('voiceToggle').classList.toggle('on', voiceOutputEnabled);
+    }
+
+    // ========== SPEECH RECOGNITION ==========
+    function setupSpeechRecognition() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { document.getElementById('micBtn').style.display = 'none'; return; }
+      recognition = new SR();
+      recognition.lang = currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
+        document.getElementById('messageInput').value = transcript;
+        autoResize(document.getElementById('messageInput'));
+        if (event.results[event.results.length - 1].isFinal) {
+          stopRecording();
+          setTimeout(() => sendMessage(), 300);
+        }
+      };
+      recognition.onerror = () => stopRecording();
+      recognition.onend = () => stopRecording();
+    }
+
+    function toggleRecording() { isRecording ? stopRecording() : startRecording(); }
+    function startRecording() {
+      if (!recognition) { showNotification('Speech recognition not supported', 'error'); return; }
+      if (currentSpeech) { window.speechSynthesis.cancel(); }
+      isRecording = true;
+      document.getElementById('micBtn').classList.add('recording');
+      recognition.start();
+    }
+    function stopRecording() {
+      isRecording = false;
+      document.getElementById('micBtn').classList.remove('recording');
+      try { if (recognition) recognition.stop(); } catch(e) {}
+    }
+
+    // ========== SPEECH SYNTHESIS ==========
+    function speakText(text, label) {
+      if (!voiceOutputEnabled) return;
+      window.speechSynthesis.cancel();
+      showAudioBar(label || t('reading'));
+
+      let cleanText = text
+        .replace(/^#{1,3}\s+[^\n]+/gm, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/[\u{1F300}-\u{1FFFF}]/gu, '')
+        .replace(/===.*?===/gs, '')
+        .replace(/\[Source:[^\]]+\]/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      const MAX_CHUNK = 2000;
+      const voiceLang = currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => v.lang === voiceLang && !v.name.includes('Google'))
+        || voices.find(v => v.lang.startsWith(currentLanguage));
+
+      if (cleanText.length <= MAX_CHUNK) {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = voiceLang; utterance.rate = 0.95; utterance.pitch = 1;
+        if (preferredVoice) utterance.voice = preferredVoice;
+        utterance.onend = () => { hideAudioBar(); };
+        currentSpeech = utterance;
+        window.speechSynthesis.speak(utterance);
+      } else {
+        const chunks = [];
+        let remaining = cleanText;
+        while (remaining.length > 0) {
+          let cut = MAX_CHUNK;
+          if (remaining.length > MAX_CHUNK) {
+            const lastPeriod = remaining.lastIndexOf('. ', MAX_CHUNK);
+            const lastNewline = remaining.lastIndexOf('\n', MAX_CHUNK);
+            cut = Math.max(lastPeriod, lastNewline);
+            if (cut < 100) cut = MAX_CHUNK;
+          }
+          chunks.push(remaining.slice(0, cut + 1).trim());
+          remaining = remaining.slice(cut + 1).trim();
+        }
+        chunks.forEach((chunk, i) => {
+          const utt = new SpeechSynthesisUtterance(chunk);
+          utt.lang = voiceLang; utt.rate = 0.95; utt.pitch = 1;
+          if (preferredVoice) utt.voice = preferredVoice;
+          if (i === 0) currentSpeech = utt;
+          if (i === chunks.length - 1) utt.onend = () => { hideAudioBar(); };
+          window.speechSynthesis.speak(utt);
+        });
+      }
+    }
+
+    // ========== CHAT LOGIC ==========
+    async function sendMessage() {
+      if (isLoading) return;
+      const input = document.getElementById('messageInput');
+      const message = input.value.trim();
+      if (!message) return;
+
+      input.value = '';
+      autoResize(input);
+      hideWelcome();
+
+      const clientType = detectType(message);
+      addUserMessage(message);
+      showTyping();
+
+      history.push({ role: 'user', content: message });
+      isLoading = true;
+      setStatus(true);
+
+      try {
+        const webhookUrl = getWebhookUrl();
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': API_SECRET,
+            'Accept-Language': currentLanguage
+          },
+          body: JSON.stringify({
+            message,
+            session_id: sessionId,
+            history: history.slice(-6),
+            type_hint: clientType,
+            language: currentLanguage
+          })
+        });
+
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+
+        removeTyping();
+        const aiResponse = data.response || data.text || data.output || (currentLanguage === 'en'
+          ? 'Sorry, I could not process your request.'
+          : 'Desole, je n\'ai pas pu traiter votre demande.');
+        const nType = data.type;
+        const inputType = (nType && nType !== 'question') ? nType : clientType;
+
+        addAiMessage(aiResponse, inputType);
+        history.push({ role: 'assistant', content: aiResponse });
+        updateModeBadge(inputType);
+        speakText(aiResponse);
+
+      } catch (err) {
+        removeTyping();
+        console.error('[Justice-AI] Fetch error:', err.name, err.message, err);
+        addAiMessage(t('errorMsg'), 'question');
+        showNotification('Error: ' + err.message, 'error');
+      } finally {
+        isLoading = false;
+        setStatus(false);
+      }
+    }
+
+    function sendExample() {
+      const chip = event.currentTarget;
+      const qKey = currentLanguage === 'fr' ? 'qFr' : 'qEn';
+      const text = chip.dataset[qKey];
+      if (text) {
+        document.getElementById('messageInput').value = text;
+        autoResize(document.getElementById('messageInput'));
+        sendMessage();
+      }
+    }
+
+    // ========== DOM HELPERS ==========
+    function hideWelcome() {
+      const w = document.getElementById('welcome');
+      if (w) w.style.display = 'none';
+    }
+
+    function addUserMessage(text) {
+      const div = document.createElement('div');
+      div.className = 'message user';
+      div.innerHTML =
+        '<div class="avatar user-avatar">\ud83d\udc64</div>' +
+        '<div class="bubble"><div class="bubble-text">' + escapeHtml(text).replace(/\n/g, '<br>') + '</div></div>';
+      document.getElementById('chatArea').appendChild(div);
+      scrollToBottom();
+    }
+
+    function addAiMessage(text, type) {
+      const responseId = 'resp-' + (++responseCounter);
+      responseTexts.set(responseId, text);
+      const listenBtn = '<div class="bubble-toolbar"><button class="bubble-speak-btn" onclick="speakStoredText(\'' + responseId + '\')">' + t('listenAll') + '</button></div>';
+      const div = document.createElement('div');
+      div.className = 'message ai';
+
+      if (type === 'consultation') {
+        div.innerHTML =
+          '<div class="avatar ai-avatar">\u2696</div>' +
+          '<div class="bubble consultation-bubble" style="padding:16px; min-width:320px;">' +
+            '<div style="font-size:11px; color:var(--gold); margin-bottom:6px; font-weight:600;">' + t('consultLabel') + '</div>' +
+            listenBtn + renderConsultation(text) +
+          '</div>';
+      } else if (type === 'strategie') {
+        div.innerHTML =
+          '<div class="avatar ai-avatar">\u2696</div>' +
+          '<div class="bubble" style="padding:16px; min-width:320px; border-color:rgba(230,57,70,0.2); background:rgba(230,57,70,0.03);">' +
+            '<div style="font-size:11px; color:#ff6b6b; margin-bottom:6px; font-weight:600;">' + t('stratLabel') + '</div>' +
+            listenBtn + renderStrategie(text) +
+          '</div>';
+      } else if (type === 'simulateur') {
+        div.innerHTML =
+          '<div class="avatar ai-avatar">\u2696</div>' +
+          '<div class="bubble" style="padding:16px; min-width:320px; border-color:rgba(123,45,139,0.3); background:rgba(123,45,139,0.03);">' +
+            '<div style="font-size:11px; color:#c77dff; margin-bottom:6px; font-weight:600;">' + t('simLabel') + '</div>' +
+            listenBtn + renderSimulateur(text) +
+          '</div>';
+      } else {
+        div.innerHTML =
+          '<div class="avatar ai-avatar">\u2696</div>' +
+          '<div class="bubble">' +
+            '<div style="font-size:11px; color:#58a6ff; margin-bottom:6px; font-weight:600;">' + t('questionLabel') + '</div>' +
+            listenBtn +
+            '<div class="bubble-text">' + parseMarkdown(text) + '</div>' +
+          '</div>';
+      }
+
+      document.getElementById('chatArea').appendChild(div);
+      scrollToBottom();
+    }
+
+    // ========== CONSULTATION RENDERER ==========
+    function getConsultationSections() {
+      return [
+        { key: '\ud83d\udd0d', label: t('secFacts'), cls: 'faits', patterns: ['FACTUAL ANALYSIS', 'FACTS', 'ANALYSE DES FAITS', 'FAITS'] },
+        { key: '\ud83d\udd11', label: t('secQuestions'), cls: 'questions', patterns: ['CENTRAL LEGAL QUESTIONS', 'LEGAL QUESTIONS', 'QUESTIONS JURIDIQUES CENTRALES', 'QUESTIONS JURIDIQUES', 'QUESTIONS CENTRALES'] },
+        { key: '\u2696', label: t('secIssues'), cls: 'problemes', patterns: ['LEGAL ISSUES', 'ISSUES', 'PROBLEMES JURIDIQUES', 'PROBL'] },
+        { key: '\ud83d\udcda', label: t('secLaw'), cls: 'textes', patterns: ['APPLICABLE LAW', 'STATUTES', 'TEXTES APPLICABLES', 'TEXTES'] },
+        { key: '\ud83d\udca1', label: t('secAnalysis'), cls: 'analyse', patterns: ['LEGAL ANALYSIS', 'ANALYSIS', 'INTERPRETATION', 'ANALYSE JURIDIQUE'] },
+        { key: '\ud83d\udccb', label: t('secEvidence'), cls: 'elements', patterns: ['EVIDENCE TO GATHER', 'EVIDENCE', 'DOCUMENTS NEEDED', 'ELEMENTS A REUNIR', 'PREUVES'] },
+        { key: '\ud83c\udfaf', label: t('secRecommend'), cls: 'orientations', patterns: ['RECOMMENDATIONS', 'GUIDANCE', 'ORIENTATIONS', 'RECOMMANDATIONS'] },
+        { key: '\u26a0', label: t('secWarning'), cls: 'garde', patterns: ['DISCLAIMER', 'WARNING', 'MISE EN GARDE', 'AVERTISSEMENT', 'IMPORTANT DISCLAIMER'] }
+      ];
+    }
+
+    function renderConsultation(text) {
+      const sections = getConsultationSections();
+      let html = '<div class="analysis-container">';
+      const remaining = splitIntoSections(text, sections);
+
+      if (remaining.parsed) {
+        for (const sec of sections) {
+          const content = remaining.sections[sec.cls];
+          if (!content || !content.trim()) continue;
+          html += '<div class="analysis-section">' +
+            '<div class="analysis-header ' + sec.cls + '" onclick="toggleSection(this)">' +
+              sec.key + ' ' + sec.label +
+              '<button class="section-speak-btn" onclick="event.stopPropagation(); speakSection(this)" title="Listen">\ud83d\udd0a</button>' +
+              '<span class="analysis-toggle">\u25bc</span>' +
+            '</div>' +
+            '<div class="analysis-body">' + parseMarkdown(content.trim()) + '</div>' +
+          '</div>';
+        }
+      } else {
+        html += '<div class="bubble-text">' + parseMarkdown(text) + '</div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function splitIntoSections(text, sections) {
+      const allPatterns = sections.flatMap(s => s.patterns).join('|');
+      const headerPattern = new RegExp(
+        '^(?:#{1,3}\\s+)?(?:[\\u{1F300}-\\u{1FFFF}\\u2696\\u26a0]\\s+)?(?:' + allPatterns + ')',
+        'imu'
+      );
+
+      if (!headerPattern.test(text)) {
+        return { parsed: false, sections: {} };
+      }
+
+      const result = { parsed: true, sections: {} };
+      sections.forEach(s => { result.sections[s.cls] = ''; });
+
+      const lines = text.split('\n');
+      let currentSection = null;
+
+      for (const line of lines) {
+        const lineUpper = line.toUpperCase().trim();
+        let matched = false;
+        for (const sec of sections) {
+          const isHeader = /^#{1,3}\s/.test(line.trim()) || /^[\u{1F300}-\u{1FFFF}\u2696\u26a0]/u.test(line.trim());
+          if (isHeader && sec.patterns.some(p => lineUpper.includes(p.toUpperCase()))) {
+            currentSection = sec.cls;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched && currentSection) {
+          result.sections[currentSection] += line + '\n';
+        }
+      }
+
+      const hasContent = Object.values(result.sections).some(v => v.trim().length > 0);
+      if (!hasContent) return { parsed: false, sections: {} };
+      return result;
+    }
+
+    // ========== STRATEGIE RENDERER ==========
+    function renderStrategie(text) {
+      const sections = [
+        { key: '\ud83d\udd34', label: t('secAdverse'), cls: 'adverse', patterns: ['OPPOSING PARTY', 'OPPOSING POSITION', 'POSITION DE LA PARTIE ADVERSE', 'PARTIE ADVERSE', 'ARGUMENTS ADVERSES', 'ADVERSAIRE', 'PROSECUTION'] },
+        { key: '\ud83d\udfe2', label: t('secDefense'), cls: 'defense', patterns: ['DEFENSE STRATEGY', 'RECOMMENDED DEFENSE', 'STRATEGIE DE DEFENSE', 'DEFENSE RECOMMANDEE', 'DEFENSE', 'VOS ARGUMENTS', 'YOUR DEFENSE'] },
+        { key: '\u2696', label: t('secBalance'), cls: 'bilan', patterns: ['STRENGTHS', 'WEAKNESSES', 'STRENGTHS & WEAKNESSES', 'FORCES', 'FAIBLESSES', 'BILAN', 'ANALYSE DU DOSSIER'] },
+        { key: '\ud83d\udd35', label: t('secSteps'), cls: 'etapes', patterns: ['NEXT STEPS', 'CONCRETE STEPS', 'PROCHAINES ETAPES', 'ETAPES CONCRETES', 'ACTIONS', 'A FAIRE'] }
+      ];
+
+      const parsed = splitIntoSections(text, sections);
+      let html = '<div class="strategie-container">';
+
+      if (parsed.parsed) {
+        const adverseContent = parsed.sections['adverse'];
+        const defenseContent = parsed.sections['defense'];
+        if (adverseContent || defenseContent) {
+          html += '<div class="strategie-columns">';
+          if (adverseContent) html +=
+            '<div class="strategie-section">' +
+              '<div class="strategie-header adverse" onclick="toggleGenericSection(this)">' +
+                '\ud83d\udd34 ' + t('secAdverse') +
+                '<button class="section-speak-btn" onclick="event.stopPropagation(); speakSection(this)">\ud83d\udd0a</button>' +
+                '<span class="analysis-toggle">\u25bc</span>' +
+              '</div>' +
+              '<div class="strategie-body">' + parseMarkdown(adverseContent.trim()) + '</div>' +
+            '</div>';
+          if (defenseContent) html +=
+            '<div class="strategie-section">' +
+              '<div class="strategie-header defense" onclick="toggleGenericSection(this)">' +
+                '\ud83d\udfe2 ' + t('secDefense') +
+                '<button class="section-speak-btn" onclick="event.stopPropagation(); speakSection(this)">\ud83d\udd0a</button>' +
+                '<span class="analysis-toggle">\u25bc</span>' +
+              '</div>' +
+              '<div class="strategie-body">' + parseMarkdown(defenseContent.trim()) + '</div>' +
+            '</div>';
+          html += '</div>';
+        }
+        ['bilan', 'etapes'].forEach(cls => {
+          const sec = sections.find(s => s.cls === cls);
+          const content = parsed.sections[cls];
+          if (!content || !content.trim()) return;
+          html +=
+            '<div class="strategie-section">' +
+              '<div class="strategie-header ' + cls + '" onclick="toggleGenericSection(this)">' +
+                sec.key + ' ' + sec.label +
+                '<button class="section-speak-btn" onclick="event.stopPropagation(); speakSection(this)">\ud83d\udd0a</button>' +
+                '<span class="analysis-toggle">\u25bc</span>' +
+              '</div>' +
+              '<div class="strategie-body">' + parseMarkdown(content.trim()) + '</div>' +
+            '</div>';
+        });
+      } else {
+        html += '<div class="bubble-text">' + parseMarkdown(text) + '</div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    // ========== SIMULATEUR RENDERER ==========
+    function renderSimulateur(text) {
+      const sections = [
+        { key: '\ud83d\udcc2', label: t('secIdent'), cls: 'identification', patterns: ['CASE IDENTIFICATION', 'IDENTIFICATION', 'DOSSIER', 'QUALIFICATION', 'IDENTIFICATION DU DOSSIER'] },
+        { key: '\u2694', label: t('secAccus'), cls: 'accusation', patterns: ['PROSECUTION', 'PLAINTIFF', 'ACCUSATION', 'PLAIGNANT', 'POURSUITES', 'ARGUMENTS DE L\'ACCUSATION'] },
+        { key: '\ud83d\udee1', label: t('secDefSim'), cls: 'defense', patterns: ['DEFENSE ARGUMENTS', 'DEFENSE', 'ARGUMENTS DE LA DEFENSE', 'CONTRE-ARGUMENTS'] },
+        { key: '\u2696', label: t('secJudge'), cls: 'juge', patterns: ['JUDGE', 'JUDGE QUESTIONS', 'PROBABLE JUDGE QUESTIONS', 'QUESTIONS PROBABLES DU JUGE', 'JUGE', 'TRIBUNAL'] },
+        { key: '\ud83d\udccb', label: t('secVerdict'), cls: 'verdict', patterns: ['VERDICT', 'PROBABLE VERDICT', 'ALTERNATIVES', 'VERDICT PROBABLE', 'ISSUE PROBABLE'] }
+      ];
+
+      const now = new Date();
+      const dossierNum = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
+      const parsed = splitIntoSections(text, sections);
+
+      let html = '<div class="simulateur-container">' +
+        '<div class="simulateur-header-banner">' + t('simBanner') + ' ' + dossierNum + ' ' + t('simBannerSuffix') + '</div>' +
+        '<div class="simulateur-warning">' + t('simWarning') + '</div>';
+
+      if (parsed.parsed) {
+        for (const sec of sections) {
+          const content = parsed.sections[sec.cls];
+          if (!content || !content.trim()) continue;
+          html +=
+            '<div class="simulateur-section">' +
+              '<div class="simulateur-sec-header ' + sec.cls + '" onclick="toggleGenericSection(this)">' +
+                sec.key + ' ' + sec.label +
+                '<button class="section-speak-btn" onclick="event.stopPropagation(); speakSection(this)">\ud83d\udd0a</button>' +
+                '<span class="analysis-toggle">\u25bc</span>' +
+              '</div>' +
+              '<div class="simulateur-sec-body">' + parseMarkdown(content.trim()) + '</div>' +
+            '</div>';
+        }
+      } else {
+        html += '<div class="bubble-text">' + parseMarkdown(text) + '</div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    // ========== SECTION TOGGLES ==========
+    function toggleGenericSection(header) {
+      const body = header.nextElementSibling;
+      const toggle = header.querySelector('.analysis-toggle');
+      if (body.style.display === 'none') { body.style.display = 'block'; toggle.textContent = '\u25bc'; }
+      else { body.style.display = 'none'; toggle.textContent = '\u25b6'; }
+    }
+    function toggleSection(header) { toggleGenericSection(header); }
+
+    function showTyping() {
+      const div = document.createElement('div');
+      div.className = 'message ai';
+      div.id = 'typingIndicator';
+      div.innerHTML =
+        '<div class="avatar ai-avatar">\u2696</div>' +
+        '<div class="bubble"><div class="typing-indicator">' +
+          '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>' +
+        '</div></div>';
+      document.getElementById('chatArea').appendChild(div);
+      scrollToBottom();
+    }
+    function removeTyping() {
+      const el = document.getElementById('typingIndicator');
+      if (el) el.remove();
+    }
+
+    function setStatus(loading) {
+      const dot = document.getElementById('statusDot');
+      const txt = document.getElementById('statusText');
+      const send = document.getElementById('sendBtn');
+      if (loading) {
+        dot.style.background = 'var(--us-red)';
+        txt.textContent = t('analyzing');
+        send.disabled = true;
+      } else {
+        dot.style.background = 'var(--green)';
+        txt.textContent = t('ready');
+        send.disabled = false;
+      }
+    }
+
+    function setForcedMode(type) {
+      const allCards = ['question', 'consultation', 'strategie', 'simulateur'];
+      allCards.forEach(t => {
+        const c = document.getElementById('card-' + t);
+        if (c) c.classList.remove('forced', 'active');
+      });
+      const indicator = document.getElementById('modeIndicator');
+      const indicatorLabel = document.getElementById('modeIndicatorLabel');
+      const textarea = document.getElementById('messageInput');
+
+      if (forcedMode === type) {
+        forcedMode = null;
+        if (indicator) indicator.classList.remove('visible');
+        if (textarea) textarea.placeholder = t('placeholder') || T[currentLanguage].placeholder;
+      } else {
+        forcedMode = type;
+        const card = document.getElementById('card-' + type);
+        if (card) card.classList.add('forced');
+        updateModeBadge(type);
+        if (indicator) indicator.classList.add('visible');
+        if (indicatorLabel) indicatorLabel.textContent = T[currentLanguage].modeLabels[type] || type;
+        if (textarea) textarea.placeholder = T[currentLanguage].placeholders[type] || textarea.placeholder;
+        if (textarea) textarea.focus();
+      }
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && sidebar.classList.contains('open')) toggleSidebar();
+    }
+
+    function updateModeBadge(type) {
+      const badge = document.getElementById('modeBadge');
+      const cards = {
+        question: document.getElementById('card-question'),
+        consultation: document.getElementById('card-consultation'),
+        strategie: document.getElementById('card-strategie'),
+        simulateur: document.getElementById('card-simulateur')
+      };
+      Object.values(cards).forEach(c => c && c.classList.remove('active'));
+      badge.className = 'mode-badge ' + type;
+      badge.textContent = T[currentLanguage].badgeLabels[type] || 'Question';
+      if (cards[type]) cards[type].classList.add('active');
+    }
+
+    function newConversation() {
+      history = [];
+      sessionId = 'session_' + Date.now();
+      forcedMode = null;
+      ['question','consultation','strategie','simulateur'].forEach(t => {
+        const c = document.getElementById('card-' + t);
+        if (c) c.classList.remove('forced', 'active');
+      });
+      const indicator = document.getElementById('modeIndicator');
+      if (indicator) indicator.classList.remove('visible');
+      const textarea = document.getElementById('messageInput');
+      if (textarea) textarea.placeholder = T[currentLanguage].placeholder;
+      const chatArea = document.getElementById('chatArea');
+
+      while (chatArea.firstChild) chatArea.removeChild(chatArea.firstChild);
+
+      const l = T[currentLanguage];
+      const welcome = document.createElement('div');
+      welcome.className = 'welcome';
+      welcome.id = 'welcome';
+
+      let examplesHtml = '';
+      l.examples.forEach((ex, i) => {
+        const enQ = T.en.examples[i] ? T.en.examples[i].text : '';
+        const frQ = T.fr.examples[i] ? T.fr.examples[i].text : '';
+        examplesHtml += '<div class="example-chip" onclick="sendExample()" data-q-en="' + escapeHtml(enQ) + '" data-q-fr="' + escapeHtml(frQ) + '">' +
+          '<strong>' + ex.label + '</strong>' +
+          '<span class="ex-text">' + ex.text + '</span></div>';
+      });
+
+      welcome.innerHTML =
+        '<div class="welcome-icon">\u2696</div>' +
+        '<h2 id="welcomeTitle">' + l.welcomeTitle + '</h2>' +
+        '<p id="welcomeText">' + l.welcomeText + '</p>' +
+        '<div class="welcome-examples" id="examplesContainer">' + examplesHtml + '</div>';
+      chatArea.appendChild(welcome);
+
+      updateModeBadge('question');
+      if (currentSpeech) window.speechSynthesis.cancel();
+    }
+
+    // ========== MODE DETECTION (BILINGUAL) ==========
+    function detectType(message) {
+      if (forcedMode) return forcedMode;
+      const msg = message.trim();
+
+      // Simulateur keywords (EN + FR)
+      const simKeywords = /(simulat(e|or|ion)|role.?play|as if|mock trial|moot court|hypothetical|what would happen|if I go to court|if I file|simule[rz]?|simulateur|joue le r[oô]le|fais comme si|proc[eè]s simul[eé]|plaidoirie|que se passerait|si j'allais en justice|si je porte plainte)/i;
+      if (simKeywords.test(msg)) return 'simulateur';
+
+      // Strategie keywords (EN + FR)
+      const stratKeywords = /(strateg(y|ic|ie)|how (to|do I|should I) defend|how (to|should I) argue|legal defense|what recourse|appeal|court case|my arguments|counter.?argument|strat[eé]gie|comment me d[eé]fendre|comment plaider|mes arguments|quel recours|faire appel|proc[eè]s|tribunal|d[eé]fense juridique|citation|assignation|plainte contre|r[eé]futer|contre-argument)/i;
+      if (stratKeywords.test(msg) && msg.length > 60) return 'strategie';
+
+      // Consultation keywords (EN + FR)
+      const factualEn = /(I (have|had|was|am|got)|my employer|my landlord|my contract|my boss|our company|someone|they (fired|terminated|evicted|refused))/i;
+      const factualFr = /(j'ai |on m'a |mon |ma |j'[eé]tais|j'ai [eé]t[eé]|mon employeur|ma femme|mon mari|mon propri[eé]taire|mon contrat|notre soci[eé]t[eé])/i;
+      if ((factualEn.test(msg) || factualFr.test(msg)) && msg.length > 80 && !msg.endsWith('?')) return 'consultation';
+
+      return 'question';
+    }
+
+    // ========== UTILS ==========
+    function handleKeyDown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+    function autoResize(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+    function scrollToBottom() {
+      const area = document.getElementById('chatArea');
+      setTimeout(() => area.scrollTop = area.scrollHeight, 50);
+    }
+    function escapeHtml(text) {
+      return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function parseMarkdown(text) {
+      return escapeHtml(text)
+        .replace(/^#{1,3}\s+(.+)$/gm, '<strong style="color:#58a6ff;display:block;margin:10px 0 4px;">$1</strong>')
+        .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+        .replace(/^[-\u2022]\s+(.+)$/gm, '<li style="margin:3px 0;">$1</li>')
+        .replace(/(<li.*<\/li>\n?)+/g, '<ul style="padding-left:16px;margin:6px 0;">$&</ul>')
+        .replace(/\n{2,}/g, '</p><p style="margin-top:8px;">')
+        .replace(/\n/g, '<br>')
+        .replace(/^/, '<p>').replace(/$/, '</p>');
+    }
+
+    function showNotification(msg, type) {
+      type = type || 'info';
+      const existing = document.querySelector('.notification');
+      if (existing) existing.remove();
+      const n = document.createElement('div');
+      n.className = 'notification ' + type;
+      n.textContent = msg;
+      document.body.appendChild(n);
+      setTimeout(() => n.remove(), 4000);
+    }
+
+    // ========== SIDEBAR MOBILE ==========
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      const isOpen = sidebar.classList.toggle('open');
+      overlay.classList.toggle('visible', isOpen);
+    }
+
+    // ========== AUDIO BAR ==========
+    function showAudioBar(label) {
+      const bar = document.getElementById('audioBar');
+      const lbl = document.getElementById('audioBarLabel');
+      if (bar) bar.classList.add('visible');
+      if (lbl) lbl.textContent = label || t('reading');
+      isSpeechPaused = false;
+      updatePauseBtn();
+    }
+    function hideAudioBar() {
+      const bar = document.getElementById('audioBar');
+      if (bar) bar.classList.remove('visible');
+      isSpeechPaused = false;
+      updatePauseBtn();
+    }
+    function updatePauseBtn() {
+      const btn = document.getElementById('pauseResumeBtn');
+      if (btn) btn.textContent = isSpeechPaused ? '\u25b6' : '\u23f8';
+      if (btn) btn.title = isSpeechPaused ? 'Resume' : 'Pause';
+    }
+    function pauseResumeSpeech() {
+      if (!window.speechSynthesis.speaking) return;
+      if (isSpeechPaused) { window.speechSynthesis.resume(); isSpeechPaused = false; }
+      else { window.speechSynthesis.pause(); isSpeechPaused = true; }
+      updatePauseBtn();
+    }
+    function stopSpeech() {
+      window.speechSynthesis.cancel();
+      hideAudioBar();
+    }
+    function speakStoredText(id) {
+      const text = responseTexts.get(id);
+      if (text) speakText(text, t('fullResponse'));
+    }
+    function speakSection(btn) {
+      const section = btn.closest('.analysis-section, .strategie-section, .simulateur-section');
+      if (!section) return;
+      const body = section.querySelector('.analysis-body, .strategie-body, .simulateur-sec-body');
+      if (!body) return;
+      const header = section.querySelector('.analysis-header, .strategie-header, .simulateur-sec-header');
+      const label = header ? header.innerText.replace(/[\u25bc\u25b6\ud83d\udd0a]/g, '').trim() : 'Section';
+      speakText(body.innerText, label);
+    }
+
+    // Load voices on ready
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = () => {};
+      speechSynthesis.getVoices();
+    }
+  </script>
+</body>
+</html>
