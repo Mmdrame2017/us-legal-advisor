@@ -3,3 +3,15 @@ node_modules/
 *.log
 .env
 .vercel
+Thumbs.db
+
+# Temporary n8n API fix scripts
+add_presearch.js
+add_webhook_trigger.js
+fix_connections.js
+fix_indexation.js
+fix_subworkflow.js
+fix_trigger_version.js
+fix_webhook_mode.js
+update_indexation.js
+update_phase_dynamic.js
