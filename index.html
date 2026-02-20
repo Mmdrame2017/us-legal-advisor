@@ -1241,11 +1241,15 @@
     let audioQueue = [];
     let isPlaying = false;
     let currentAudio = null;
+    let ttsAborted = false;
+    let ttsAllFetched = false;
 
     async function speakText(text, label) {
       if (!voiceOutputEnabled) return;
       stopSpeech();
       showAudioBar(label || t('reading'));
+      ttsAborted = false;
+      ttsAllFetched = false;
 
       let cleanText = text
         .replace(/^#{1,3}\s+[^\n]+/gm, '')
@@ -1275,36 +1279,34 @@
         remaining = remaining.slice(cut + 1).trim();
       }
 
-      console.log('🎤 TTS: OpenAI (' + lang.toUpperCase() + '), ' + chunks.length + ' chunks');
+      console.log('🎤 TTS: OpenAI (' + lang.toUpperCase() + '), ' + chunks.length + ' chunks (parallel)');
 
-      // Fetch audio for all chunks
+      // Launch ALL fetches in PARALLEL - reduces total wait from N×6s to ~6s
+      const fetchPromises = chunks.map((chunk, i) =>
+        fetch(TTS_WEBHOOK, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: chunk, language: lang })
+        })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => (data && data.audio) ? data.audio : null)
+        .catch(err => { if (!ttsAborted) console.error('TTS chunk', i, 'error:', err); return null; })
+      );
+
+      // Play each chunk in ORDER as it resolves
       audioQueue = [];
-      for (const chunk of chunks) {
-        try {
-          const response = await fetch(TTS_WEBHOOK, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: chunk, language: lang })
-          });
-
-          if (!response.ok) {
-            console.error('TTS error:', response.status);
-            continue;
-          }
-
-          const data = await response.json();
-          if (data.audio) {
-            const audio = new Audio('data:audio/mp3;base64,' + data.audio);
-            audioQueue.push(audio);
-          }
-        } catch (err) {
-          console.error('TTS fetch error:', err);
+      for (let i = 0; i < fetchPromises.length; i++) {
+        if (ttsAborted) break;
+        const audio64 = await fetchPromises[i];
+        if (audio64) {
+          const audio = new Audio('data:audio/mp3;base64,' + audio64);
+          audioQueue.push(audio);
+          if (!isPlaying) playNextAudio();
         }
       }
 
-      if (audioQueue.length > 0) {
-        playNextAudio();
-      } else {
+      ttsAllFetched = true;
+      if (!isPlaying && audioQueue.length === 0) {
         hideAudioBar();
         showNotification('TTS error - check console', 'error');
       }
@@ -1312,9 +1314,15 @@
 
     function playNextAudio() {
       if (audioQueue.length === 0) {
-        isPlaying = false;
-        currentAudio = null;
-        hideAudioBar();
+        if (!ttsAllFetched && !ttsAborted) {
+          // Still fetching next chunks — wait briefly and retry
+          isPlaying = false;
+          setTimeout(playNextAudio, 150);
+        } else {
+          isPlaying = false;
+          currentAudio = null;
+          hideAudioBar();
+        }
         return;
       }
 
@@ -1868,6 +1876,8 @@
       updatePauseBtn();
     }
     function stopSpeech() {
+      ttsAborted = true;
+      ttsAllFetched = true;
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.src = '';
