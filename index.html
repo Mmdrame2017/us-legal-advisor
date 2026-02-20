@@ -1244,12 +1244,17 @@
     let currentAudio = null;
     let ttsAborted = false;
     let ttsAllFetched = false;
-    let ttsGeneration = 0; // Prevents race condition when speakText called multiple times
+    let ttsGeneration = 0;
+    let ttsAbortController = null; // Cancels in-flight HTTP requests
 
     async function speakText(text, label) {
       if (!voiceOutputEnabled) return;
       ttsGeneration++;
       const myGen = ttsGeneration;
+      // Cancel any in-flight fetch requests from previous speakText calls
+      if (ttsAbortController) ttsAbortController.abort();
+      ttsAbortController = new AbortController();
+      const signal = ttsAbortController.signal;
       stopSpeech();
       showAudioBar(label || t('reading'));
       ttsAborted = false;
@@ -1289,16 +1294,21 @@
 
       console.log('🎤 TTS: OpenAI (' + lang.toUpperCase() + '), ' + chunks.length + ' chunks (parallel)');
 
-      // Launch ALL fetches in PARALLEL - reduces total wait from N×6s to ~6s
+      // Launch ALL fetches in PARALLEL with AbortController for proper cancellation
       const fetchPromises = chunks.map((chunk, i) =>
         fetch(TTS_WEBHOOK, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: chunk, language: lang })
+          body: JSON.stringify({ text: chunk, language: lang }),
+          signal: signal
         })
         .then(r => r.ok ? r.json() : null)
         .then(data => (data && typeof data.audio === 'string' && data.audio.length > 0) ? data.audio : null)
-        .catch(err => { console.error('TTS chunk', i, 'error:', err); return null; })
+        .catch(err => {
+          if (err.name === 'AbortError') return null; // Intentionally cancelled
+          console.error('TTS chunk', i, 'error:', err);
+          return null;
+        })
       );
 
       // Play each chunk in ORDER as it resolves
@@ -1395,9 +1405,11 @@
         const data = await response.json();
 
         removeTyping();
-        const aiResponse = data.response || data.text || data.output || (currentLanguage === 'en'
+        const rawResponse = data.response || data.text || data.output || (currentLanguage === 'en'
           ? 'Sorry, I could not process your request.'
           : 'Desole, je n\'ai pas pu traiter votre demande.');
+        // Remove [TYPE: xxx] marker that sometimes leaks from n8n pipeline
+        const aiResponse = rawResponse.replace(/^\s*\[TYPE:\s*\w+\]\s*\n*/i, '');
         const nType = data.type;
         const inputType = (nType && nType !== 'question') ? nType : clientType;
 
