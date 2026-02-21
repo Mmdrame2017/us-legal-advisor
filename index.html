@@ -1321,7 +1321,7 @@
           const audio = new Audio('data:audio/mp3;base64,' + audio64);
           audio.preload = 'auto';
           audioQueue.push(audio);
-          if (!isPlaying) playNextAudio();
+          if (!isPlaying) playNextAudio(myGen);
         }
       }
 
@@ -1332,12 +1332,17 @@
       }
     }
 
-    function playNextAudio() {
+    function playNextAudio(gen) {
+      // If no gen passed, use current (first call from speakText)
+      if (gen === undefined) gen = ttsGeneration;
+      // Stale polling loop from a previous speakText call — die silently
+      if (gen !== ttsGeneration) return;
+
       if (audioQueue.length === 0) {
         if (!ttsAllFetched && !ttsAborted) {
           // Still fetching next chunks — wait briefly and retry
           isPlaying = false;
-          setTimeout(playNextAudio, 150);
+          setTimeout(() => playNextAudio(gen), 150);
         } else {
           isPlaying = false;
           currentAudio = null;
@@ -1349,18 +1354,14 @@
       isPlaying = true;
       currentAudio = audioQueue.shift();
 
-      currentAudio.onended = () => {
-        playNextAudio();
-      };
-
+      currentAudio.onended = () => { playNextAudio(gen); };
       currentAudio.onerror = (err) => {
         console.error('Audio playback error:', err);
-        playNextAudio();
+        playNextAudio(gen);
       };
-
       currentAudio.play().catch(err => {
         console.error('Audio play error:', err);
-        playNextAudio();
+        playNextAudio(gen);
       });
     }
 
