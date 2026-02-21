@@ -1255,7 +1255,7 @@
       if (ttsAbortController) ttsAbortController.abort();
       ttsAbortController = new AbortController();
       const signal = ttsAbortController.signal;
-      stopSpeech();
+      _clearAudioPlayback(); // Stop current audio WITHOUT resetting ttsGeneration
       showAudioBar(label || t('reading'));
       ttsAborted = false;
       ttsAllFetched = false;
@@ -1897,11 +1897,10 @@
       }
       updatePauseBtn();
     }
-    function stopSpeech() {
+    function _clearAudioPlayback() {
       ttsAborted = true;
       ttsAllFetched = true;
       if (currentAudio) {
-        // Remove handlers BEFORE clearing src to prevent onerror cascade
         currentAudio.onended = null;
         currentAudio.onerror = null;
         currentAudio.pause();
@@ -1918,6 +1917,16 @@
       isPlaying = false;
       isSpeechPaused = false;
       hideAudioBar();
+    }
+    function stopSpeech() {
+      // Increment generation so any running speakText() loop exits immediately
+      ttsGeneration++;
+      // Cancel all in-flight fetch requests
+      if (ttsAbortController) {
+        ttsAbortController.abort();
+        ttsAbortController = null;
+      }
+      _clearAudioPlayback();
     }
     function speakStoredText(id) {
       const text = responseTexts.get(id);
