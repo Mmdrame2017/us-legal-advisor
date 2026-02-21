@@ -1901,13 +1901,21 @@
       ttsAborted = true;
       ttsAllFetched = true;
       if (currentAudio) {
+        // Remove handlers BEFORE clearing src to prevent onerror cascade
+        currentAudio.onended = null;
+        currentAudio.onerror = null;
         currentAudio.pause();
         currentAudio.src = '';
+        currentAudio = null;
       }
-      audioQueue.forEach(a => { a.pause(); a.src = ''; });
+      audioQueue.forEach(a => {
+        a.onended = null;
+        a.onerror = null;
+        a.pause();
+        a.src = '';
+      });
       audioQueue = [];
       isPlaying = false;
-      currentAudio = null;
       isSpeechPaused = false;
       hideAudioBar();
     }
